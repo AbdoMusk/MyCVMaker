@@ -1,11 +1,67 @@
 'use client';
 
 import React from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useCV } from '../context/CVContext';
 import { WorkExperience, Education, Skill, Certification, Project } from '../types/cv';
 
 // Helper function to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+// Drag Handle Component
+const DragHandle = ({ ...props }) => (
+  <button
+    type="button"
+    className="cursor-grab hover:text-gray-700 text-gray-400 mr-2 active:cursor-grabbing"
+    {...props}
+  >
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+      <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
+    </svg>
+  </button>
+);
+
+// Sortable Item Component
+const SortableItem = ({ id, children }: { id: string; children: (props: any) => React.ReactNode }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 2 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+};
 
 // Input Field Component
 const InputField = ({
@@ -254,6 +310,27 @@ const WorkExperienceSection = () => {
   const { cvData, updateWorkExperience } = useCV();
   const { workExperience } = cvData;
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = workExperience.findIndex((exp) => exp.id === active.id);
+      const newIndex = workExperience.findIndex((exp) => exp.id === over?.id);
+      updateWorkExperience(arrayMove(workExperience, oldIndex, newIndex));
+    }
+  };
+
+
   const addExperience = () => {
     const newExp: WorkExperience = {
       id: generateId(),
@@ -305,24 +382,38 @@ const WorkExperienceSection = () => {
   return (
     <CollapsibleSection title="Work Experience">
       <SectionHeader title="" onAdd={addExperience} addLabel="Add Experience" />
-      {workExperience.map((exp, idx) => (
-        <div key={exp.id} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-600">Experience {idx + 1}</span>
-            <button
-              onClick={() => removeExperience(exp.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <InputField
-              label="Job Title"
-              value={exp.jobTitle}
-              onChange={(value) => updateExperience(exp.id, { jobTitle: value })}
-              placeholder="Software Engineer"
-            />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={workExperience.map(exp => exp.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {workExperience.map((exp, idx) => (
+            <SortableItem key={exp.id} id={exp.id}>
+              {(dragHandleProps) => (
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <DragHandle {...dragHandleProps} />
+                      <span className="text-sm font-medium text-gray-600">Experience {idx + 1}</span>
+                    </div>
+                    <button
+                      onClick={() => removeExperience(exp.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <InputField
+                      label="Job Title"
+                      value={exp.jobTitle}
+                      onChange={(value) => updateExperience(exp.id, { jobTitle: value })}
+                      placeholder="Software Engineer"
+                    />
             <InputField
               label="Company"
               value={exp.company}
@@ -395,7 +486,11 @@ const WorkExperienceSection = () => {
             ))}
           </div>
         </div>
+      )}
+      </SortableItem>
       ))}
+      </SortableContext>
+      </DndContext>
     </CollapsibleSection>
   );
 };
@@ -404,6 +499,26 @@ const WorkExperienceSection = () => {
 const EducationSection = () => {
   const { cvData, updateEducation } = useCV();
   const { education } = cvData;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = education.findIndex((edu) => edu.id === active.id);
+      const newIndex = education.findIndex((edu) => edu.id === over?.id);
+      updateEducation(arrayMove(education, oldIndex, newIndex));
+    }
+  };
 
   const addEducation = () => {
     const newEdu: Education = {
@@ -427,53 +542,71 @@ const EducationSection = () => {
   return (
     <CollapsibleSection title="Education">
       <SectionHeader title="" onAdd={addEducation} addLabel="Add Education" />
-      {education.map((edu, idx) => (
-        <div key={edu.id} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-600">Education {idx + 1}</span>
-            <button
-              onClick={() => removeEducation(edu.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <InputField
-                label="Degree"
-                value={edu.degree}
-                onChange={(value) => updateEdu(edu.id, { degree: value })}
-                placeholder="Bachelor of Science in Computer Science"
-              />
-            </div>
-            <InputField
-              label="Institution"
-              value={edu.institution}
-              onChange={(value) => updateEdu(edu.id, { institution: value })}
-              placeholder="University Name"
-            />
-            <InputField
-              label="Location"
-              value={edu.location}
-              onChange={(value) => updateEdu(edu.id, { location: value })}
-              placeholder="City, State"
-            />
-            <InputField
-              label="Graduation Date"
-              value={edu.graduationDate}
-              onChange={(value) => updateEdu(edu.id, { graduationDate: value })}
-              type="month"
-            />
-            <InputField
-              label="GPA (Optional)"
-              value={edu.gpa || ''}
-              onChange={(value) => updateEdu(edu.id, { gpa: value })}
-              placeholder="3.8/4.0"
-            />
-          </div>
-        </div>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={education.map(edu => edu.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {education.map((edu, idx) => (
+            <SortableItem key={edu.id} id={edu.id}>
+              {(dragHandleProps) => (
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <DragHandle {...dragHandleProps} />
+                      <span className="text-sm font-medium text-gray-600">Education {idx + 1}</span>
+                    </div>
+                    <button
+                      onClick={() => removeEducation(edu.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <InputField
+                        label="Degree"
+                        value={edu.degree}
+                        onChange={(value) => updateEdu(edu.id, { degree: value })}
+                        placeholder="Bachelor of Science in Computer Science"
+                      />
+                    </div>
+                    <InputField
+                      label="Institution"
+                      value={edu.institution}
+                      onChange={(value) => updateEdu(edu.id, { institution: value })}
+                      placeholder="University Name"
+                    />
+                    <InputField
+                      label="Location"
+                      value={edu.location}
+                      onChange={(value) => updateEdu(edu.id, { location: value })}
+                      placeholder="City, State"
+                    />
+                    <InputField
+                      label="Graduation Date"
+                      value={edu.graduationDate}
+                      onChange={(value) => updateEdu(edu.id, { graduationDate: value })}
+                      type="month"
+                    />
+                    <InputField
+                      label="GPA (Optional)"
+                      value={edu.gpa || ''}
+                      onChange={(value) => updateEdu(edu.id, { gpa: value })}
+                      placeholder="3.8/4.0"
+                    />
+                  </div>
+                </div>
+              )}
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
     </CollapsibleSection>
   );
 };
@@ -482,6 +615,36 @@ const EducationSection = () => {
 const SkillsSection = () => {
   const { cvData, updateSkills } = useCV();
   const { skills } = cvData;
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+       // Since skills are filtered into categories, we need to handle reordering within the main list carefully
+       // or, for simplicity in this implementation, we can just reorder within the global list if they are contiguous
+       // But wait, the UI splits them.
+       // The best "simple" way to support sorting in categorized lists is to have separate SortableContexts for each category.
+       // And we only allow sorting WITHIN that category.
+       
+       // Find the full indices in the main 'skills' array
+       const oldIndex = skills.findIndex((s) => s.id === active.id);
+       const newIndex = skills.findIndex((s) => s.id === over?.id);
+       
+       if (oldIndex !== -1 && newIndex !== -1) {
+         updateSkills(arrayMove(skills, oldIndex, newIndex));
+       }
+    }
+  };
 
   const addSkill = (category: Skill['category']) => {
     const newSkill: Skill = {
@@ -504,70 +667,155 @@ const SkillsSection = () => {
   const softSkills = skills.filter((s) => s.category === 'soft');
   const languages = skills.filter((s) => s.category === 'language');
 
-  const SkillItem = ({ skill }: { skill: Skill }) => (
-    <div className="flex items-center gap-2 mb-2">
-      <input
-        type="text"
-        value={skill.name}
-        onChange={(e) => updateSkill(skill.id, { name: e.target.value })}
-        placeholder="Skill name"
-        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-      />
-      <button
-        onClick={() => removeSkill(skill.id)}
-        className="px-2 text-red-500 hover:text-red-700 text-lg"
-      >
-        ×
-      </button>
-    </div>
-  );
-
   return (
     <CollapsibleSection title="Skills">
-      <div className="space-y-4">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">Technical Skills</label>
-            <button
-              onClick={() => addSkill('technical')}
-              className="text-sm text-blue-500 hover:text-blue-700"
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="space-y-4">
+          {/* Technical Skills */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-medium text-gray-700">Technical Skills</label>
+              <button
+                onClick={() => addSkill('technical')}
+                className="text-sm text-blue-500 hover:text-blue-700"
+              >
+                + Add
+              </button>
+            </div>
+            <SortableContext
+              items={technicalSkills.map(s => s.id)}
+              strategy={verticalListSortingStrategy}
             >
-              + Add
-            </button>
+              {technicalSkills.map((skill) => (
+                <SortableItem key={skill.id} id={skill.id}>
+                  {(dragHandleProps) => (
+                    <div className="flex items-center gap-2 mb-2">
+                      <DragHandle {...dragHandleProps} />
+                      <input
+                        type="text"
+                        value={skill.name}
+                        onChange={(e) => updateSkill(skill.id, { name: e.target.value })}
+                        placeholder="Skill name"
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                      <select
+                        value={skill.level || 'intermediate'} 
+                        onChange={(e) => updateSkill(skill.id, { level: e.target.value as Skill['level'] })}
+                        className="px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      >
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                        <option value="expert">Expert</option>
+                      </select>
+                      <button
+                        onClick={() => removeSkill(skill.id)}
+                        className="px-2 text-red-500 hover:text-red-700 text-lg"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </SortableItem>
+              ))}
+            </SortableContext>
           </div>
-          {technicalSkills.map((skill) => (
-            <SkillItem key={skill.id} skill={skill} />
-          ))}
-        </div>
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">Soft Skills</label>
-            <button
-              onClick={() => addSkill('soft')}
-              className="text-sm text-blue-500 hover:text-blue-700"
+
+          {/* Soft Skills */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-medium text-gray-700">Soft Skills</label>
+              <button
+                onClick={() => addSkill('soft')}
+                className="text-sm text-blue-500 hover:text-blue-700"
+              >
+                + Add
+              </button>
+            </div>
+            <SortableContext
+              items={softSkills.map(s => s.id)}
+              strategy={verticalListSortingStrategy}
             >
-              + Add
-            </button>
+              {softSkills.map((skill) => (
+                <SortableItem key={skill.id} id={skill.id}>
+                  {(dragHandleProps) => (
+                    <div className="flex items-center gap-2 mb-2">
+                      <DragHandle {...dragHandleProps} />
+                      <input
+                        type="text"
+                        value={skill.name}
+                        onChange={(e) => updateSkill(skill.id, { name: e.target.value })}
+                        placeholder="Skill name"
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                      <button
+                        onClick={() => removeSkill(skill.id)}
+                        className="px-2 text-red-500 hover:text-red-700 text-lg"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </SortableItem>
+              ))}
+            </SortableContext>
           </div>
-          {softSkills.map((skill) => (
-            <SkillItem key={skill.id} skill={skill} />
-          ))}
-        </div>
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">Languages</label>
-            <button
-              onClick={() => addSkill('language')}
-              className="text-sm text-blue-500 hover:text-blue-700"
+
+          {/* Languages */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-medium text-gray-700">Languages</label>
+              <button
+                onClick={() => addSkill('language')}
+                className="text-sm text-blue-500 hover:text-blue-700"
+              >
+                + Add
+              </button>
+            </div>
+            <SortableContext
+              items={languages.map(s => s.id)}
+              strategy={verticalListSortingStrategy}
             >
-              + Add
-            </button>
+              {languages.map((skill) => (
+                <SortableItem key={skill.id} id={skill.id}>
+                  {(dragHandleProps) => (
+                    <div className="flex items-center gap-2 mb-2">
+                      <DragHandle {...dragHandleProps} />
+                      <input
+                        type="text"
+                        value={skill.name}
+                        onChange={(e) => updateSkill(skill.id, { name: e.target.value })}
+                        placeholder="Skill name"
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      />
+                      <select
+                        value={skill.level || 'intermediate'}
+                        onChange={(e) => updateSkill(skill.id, { level: e.target.value as Skill['level'] })}
+                        className="px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      >
+                        <option value="beginner">Basic</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                        <option value="expert">Native/Fluent</option>
+                      </select>
+                      <button
+                        onClick={() => removeSkill(skill.id)}
+                        className="px-2 text-red-500 hover:text-red-700 text-lg"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </SortableItem>
+              ))}
+            </SortableContext>
           </div>
-          {languages.map((skill) => (
-            <SkillItem key={skill.id} skill={skill} />
-          ))}
         </div>
-      </div>
+      </DndContext>
     </CollapsibleSection>
   );
 };
@@ -576,6 +824,26 @@ const SkillsSection = () => {
 const CertificationsSection = () => {
   const { cvData, updateCertifications } = useCV();
   const { certifications } = cvData;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = certifications.findIndex((cert) => cert.id === active.id);
+      const newIndex = certifications.findIndex((cert) => cert.id === over?.id);
+      updateCertifications(arrayMove(certifications, oldIndex, newIndex));
+    }
+  };
 
   const addCertification = () => {
     const newCert: Certification = {
@@ -600,41 +868,59 @@ const CertificationsSection = () => {
   return (
     <CollapsibleSection title="Certifications" defaultOpen={false}>
       <SectionHeader title="" onAdd={addCertification} addLabel="Add Certification" />
-      {certifications.map((cert, idx) => (
-        <div key={cert.id} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-600">Certification {idx + 1}</span>
-            <button
-              onClick={() => removeCertification(cert.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <InputField
-                label="Certification Name"
-                value={cert.name}
-                onChange={(value) => updateCert(cert.id, { name: value })}
-                placeholder="AWS Solutions Architect"
-              />
-            </div>
-            <InputField
-              label="Issuing Organization"
-              value={cert.issuer}
-              onChange={(value) => updateCert(cert.id, { issuer: value })}
-              placeholder="Amazon Web Services"
-            />
-            <InputField
-              label="Date"
-              value={cert.date}
-              onChange={(value) => updateCert(cert.id, { date: value })}
-              type="month"
-            />
-          </div>
-        </div>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={certifications.map(cert => cert.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {certifications.map((cert, idx) => (
+            <SortableItem key={cert.id} id={cert.id}>
+              {(dragHandleProps) => (
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <DragHandle {...dragHandleProps} />
+                      <span className="text-sm font-medium text-gray-600">Certification {idx + 1}</span>
+                    </div>
+                    <button
+                      onClick={() => removeCertification(cert.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <InputField
+                        label="Certification Name"
+                        value={cert.name}
+                        onChange={(value) => updateCert(cert.id, { name: value })}
+                        placeholder="AWS Solutions Architect"
+                      />
+                    </div>
+                    <InputField
+                      label="Issuing Organization"
+                      value={cert.issuer}
+                      onChange={(value) => updateCert(cert.id, { issuer: value })}
+                      placeholder="Amazon Web Services"
+                    />
+                    <InputField
+                      label="Date"
+                      value={cert.date}
+                      onChange={(value) => updateCert(cert.id, { date: value })}
+                      type="month"
+                    />
+                  </div>
+                </div>
+              )}
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
     </CollapsibleSection>
   );
 };
@@ -643,6 +929,26 @@ const CertificationsSection = () => {
 const ProjectsSection = () => {
   const { cvData, updateProjects } = useCV();
   const { projects } = cvData;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = projects.findIndex((proj) => proj.id === active.id);
+      const newIndex = projects.findIndex((proj) => proj.id === over?.id);
+      updateProjects(arrayMove(projects, oldIndex, newIndex));
+    }
+  };
 
   const addProject = () => {
     const newProject: Project = {
@@ -665,44 +971,62 @@ const ProjectsSection = () => {
   return (
     <CollapsibleSection title="Projects" defaultOpen={false}>
       <SectionHeader title="" onAdd={addProject} addLabel="Add Project" />
-      {projects.map((proj, idx) => (
-        <div key={proj.id} className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-600">Project {idx + 1}</span>
-            <button
-              onClick={() => removeProject(proj.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-          <InputField
-            label="Project Name"
-            value={proj.name}
-            onChange={(value) => updateProject(proj.id, { name: value })}
-            placeholder="E-Commerce Platform"
-          />
-          <TextAreaField
-            label="Description"
-            value={proj.description}
-            onChange={(value) => updateProject(proj.id, { description: value })}
-            placeholder="Brief description of the project and your role"
-            rows={2}
-          />
-          <InputField
-            label="Technologies Used"
-            value={proj.technologies}
-            onChange={(value) => updateProject(proj.id, { technologies: value })}
-            placeholder="React, Node.js, PostgreSQL"
-          />
-          <InputField
-            label="Link (Optional)"
-            value={proj.link || ''}
-            onChange={(value) => updateProject(proj.id, { link: value })}
-            placeholder="github.com/username/project"
-          />
-        </div>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={projects.map(proj => proj.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {projects.map((proj, idx) => (
+            <SortableItem key={proj.id} id={proj.id}>
+              {(dragHandleProps) => (
+                <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <DragHandle {...dragHandleProps} />
+                      <span className="text-sm font-medium text-gray-600">Project {idx + 1}</span>
+                    </div>
+                    <button
+                      onClick={() => removeProject(proj.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <InputField
+                    label="Project Name"
+                    value={proj.name}
+                    onChange={(value) => updateProject(proj.id, { name: value })}
+                    placeholder="E-Commerce Platform"
+                  />
+                  <TextAreaField
+                    label="Description"
+                    value={proj.description}
+                    onChange={(value) => updateProject(proj.id, { description: value })}
+                    placeholder="Brief description of the project and your role"
+                    rows={2}
+                  />
+                  <InputField
+                    label="Technologies Used"
+                    value={proj.technologies}
+                    onChange={(value) => updateProject(proj.id, { technologies: value })}
+                    placeholder="React, Node.js, PostgreSQL"
+                  />
+                  <InputField
+                    label="Link (Optional)"
+                    value={proj.link || ''}
+                    onChange={(value) => updateProject(proj.id, { link: value })}
+                    placeholder="github.com/username/project"
+                  />
+                </div>
+              )}
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
     </CollapsibleSection>
   );
 };

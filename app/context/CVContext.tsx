@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CVData, defaultCVData } from '../types/cv';
 
 interface CVContextType {
@@ -17,8 +17,31 @@ interface CVContextType {
 
 const CVContext = createContext<CVContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'cv-maker-data';
+
 export function CVProvider({ children }: { children: ReactNode }) {
   const [cvData, setCVData] = useState<CVData>(defaultCVData);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load data from local storage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        setCVData(JSON.parse(savedData));
+      } catch (error) {
+        console.error('Failed to parse CV data from local storage', error);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save data to local storage whenever it changes
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cvData));
+    }
+  }, [cvData, isLoaded]);
 
   const updateCVData = (data: Partial<CVData>) => {
     setCVData(prev => ({ ...prev, ...data }));
