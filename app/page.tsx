@@ -18,7 +18,6 @@ export default function Home() {
     
     try {
       // Create high-resolution PNG using html-to-image
-      // This is more accurate than html2canvas for complex CSS
       const imgData = await toPng(cvElement, {
         quality: 1.0,
         pixelRatio: 2, // Higher resolution for crisp output
@@ -37,9 +36,6 @@ export default function Home() {
       // Add image to PDF (0, 0, 210mm width, 297mm height)
       pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
       
-      // Also download as image as requested
-      Object.assign(document.createElement('a'), { href: imgData, download: 'cv-image.png' }).click();
-
       // Download the PDF
       pdf.save('my-cv.pdf');
     } catch (error) {
