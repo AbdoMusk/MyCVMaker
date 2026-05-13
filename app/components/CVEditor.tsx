@@ -29,6 +29,7 @@ import {
   TRANSLATIONS,
   SectionTitleKey,
   Language,
+  ImageShape,
 } from '../types/cv';
 
 // Helper function to generate unique IDs
@@ -373,6 +374,219 @@ const ColorField = ({
   </div>
 );
 
+// Photo Frame + Cropping Editor — shape choice, zoom slider, drag-to-pan preview
+const SHAPE_OPTIONS: { id: ImageShape; label: string }[] = [
+  { id: 'circle',   label: 'Circle' },
+  { id: 'rounded',  label: 'Rounded' },
+  { id: 'square',   label: 'Square' },
+  { id: 'hexagon',  label: 'Hexagon' },
+  { id: 'faded',    label: 'Faded' },
+];
+
+const PhotoFrameEditor = ({ src }: { src: string }) => {
+  const { cvData, updateImageStyle } = useCV();
+  const { imageStyle } = cvData.settings;
+  const dragState = React.useRef<{
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const previewRef = React.useRef<HTMLDivElement | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!previewRef.current) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const rect = previewRef.current.getBoundingClientRect();
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      baseX: imageStyle.offsetX,
+      baseY: imageStyle.offsetY,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current) return;
+    const { startX, startY, baseX, baseY, width, height } = dragState.current;
+    // 1 px of drag ≈ 1 / dim * 100% of object-position shift; invert sign because
+    // dragging right should reveal the left side of the image (move position left).
+    const dx = ((e.clientX - startX) / width) * 100;
+    const dy = ((e.clientY - startY) / height) * 100;
+    const nextX = Math.max(-100, Math.min(100, baseX - dx));
+    const nextY = Math.max(-100, Math.min(100, baseY - dy));
+    updateImageStyle({ offsetX: Math.round(nextX), offsetY: Math.round(nextY) });
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragState.current = null;
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+  };
+
+  const reset = () => updateImageStyle({ zoom: 1, offsetX: 0, offsetY: 0 });
+
+  return (
+    <div className="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
+      <div className="flex items-center justify-between mb-3">
+        <label className="text-sm font-medium text-gray-700">Photo Frame & Cropping</label>
+        <button
+          onClick={reset}
+          className="text-xs text-blue-500 hover:text-blue-700"
+          type="button"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Shape picker */}
+      <div className="grid grid-cols-5 gap-2 mb-3">
+        {SHAPE_OPTIONS.map((opt) => {
+          const active = imageStyle.shape === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => updateImageStyle({ shape: opt.id })}
+              className={`flex flex-col items-center gap-1 p-2 rounded-md border transition-all ${
+                active ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-400'
+              }`}
+              title={opt.label}
+            >
+              <ShapeThumbnail shape={opt.id} src={src} />
+              <span className="text-[10px] text-gray-600">{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Drag-to-pan preview */}
+      {src && (
+        <div className="flex gap-3 items-start">
+          <div
+            ref={previewRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            className={[
+              'w-24 h-24 overflow-hidden bg-gray-200 cursor-grab active:cursor-grabbing flex-shrink-0',
+              `cv-image-shape-${imageStyle.shape}`,
+              imageStyle.border ? 'cv-image-bordered' : '',
+            ].join(' ')}
+            title="Drag to reposition"
+          >
+            <img
+              src={src}
+              alt="Preview"
+              draggable={false}
+              className="w-full h-full object-cover select-none"
+              style={{
+                transform: `scale(${imageStyle.zoom})`,
+                objectPosition: `${50 + imageStyle.offsetX}% ${50 + imageStyle.offsetY}%`,
+              }}
+            />
+          </div>
+
+          {/* Sliders */}
+          <div className="flex-1 min-w-0 space-y-2">
+            <SliderRow
+              label="Zoom"
+              value={imageStyle.zoom}
+              min={1}
+              max={3}
+              step={0.05}
+              onChange={(v) => updateImageStyle({ zoom: v })}
+              display={`${imageStyle.zoom.toFixed(2)}x`}
+            />
+            <SliderRow
+              label="Horizontal"
+              value={imageStyle.offsetX}
+              min={-100}
+              max={100}
+              step={1}
+              onChange={(v) => updateImageStyle({ offsetX: Math.round(v) })}
+              display={`${imageStyle.offsetX}%`}
+            />
+            <SliderRow
+              label="Vertical"
+              value={imageStyle.offsetY}
+              min={-100}
+              max={100}
+              step={1}
+              onChange={(v) => updateImageStyle({ offsetY: Math.round(v) })}
+              display={`${imageStyle.offsetY}%`}
+            />
+            <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={imageStyle.border}
+                onChange={(e) => updateImageStyle({ border: e.target.checked })}
+                className="rounded border-gray-300"
+              />
+              White border (circle / rounded / square only)
+            </label>
+          </div>
+        </div>
+      )}
+      {!src && (
+        <p className="text-xs text-gray-500">Upload a photo above to start cropping and positioning.</p>
+      )}
+    </div>
+  );
+};
+
+// Tiny shape preview thumbnail (uses the same CSS shape classes as the CV)
+const ShapeThumbnail = ({ shape, src }: { shape: ImageShape; src: string }) => (
+  <div
+    className={`w-8 h-8 overflow-hidden bg-gray-300 cv-image-shape-${shape}`}
+    style={{ boxShadow: 'none' }}
+  >
+    {src ? (
+      <img src={src} alt="" className="w-full h-full object-cover" />
+    ) : (
+      <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-600" />
+    )}
+  </div>
+);
+
+const SliderRow = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  display,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+  display: string;
+}) => (
+  <div>
+    <div className="flex justify-between text-xs text-gray-600">
+      <span>{label}</span>
+      <span className="font-mono">{display}</span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="w-full accent-blue-500"
+    />
+  </div>
+);
+
 // Personal Info Section
 const PersonalInfoSection = () => {
   const { cvData, updatePersonalInfo } = useCV();
@@ -430,7 +644,9 @@ const PersonalInfoSection = () => {
         </div>
         <p className="text-xs text-gray-500 mt-2">Recommended: Square image, at least 200x200px</p>
       </div>
-      
+
+      <PhotoFrameEditor src={personalInfo.profileImage || ''} />
+
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <InputField

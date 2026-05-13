@@ -16,6 +16,7 @@ interface CVContextType {
   updateSettings: (settings: Partial<CVSettings>) => void;
   updateTheme: (theme: Partial<CVSettings['theme']>) => void;
   updateCustomTitle: (key: keyof CVSettings['customTitles'], value: string) => void;
+  updateImageStyle: (style: Partial<CVSettings['imageStyle']>) => void;
 }
 
 const CVContext = createContext<CVContextType | undefined>(undefined);
@@ -38,6 +39,10 @@ function migrate(raw: any): CVData {
       customTitles: {
         ...defaultSettings.customTitles,
         ...((raw.settings && raw.settings.customTitles) || {}),
+      },
+      imageStyle: {
+        ...defaultSettings.imageStyle,
+        ...((raw.settings && raw.settings.imageStyle) || {}),
       },
     },
   };
@@ -119,6 +124,16 @@ export function CVProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const updateImageStyle = (style: Partial<CVSettings['imageStyle']>) => {
+    setCVData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        imageStyle: { ...prev.settings.imageStyle, ...style },
+      },
+    }));
+  };
+
   const updateCustomTitle = (key: keyof CVSettings['customTitles'], value: string) => {
     setCVData(prev => {
       const nextTitles = { ...prev.settings.customTitles };
@@ -149,6 +164,7 @@ export function CVProvider({ children }: { children: ReactNode }) {
         updateSettings,
         updateTheme,
         updateCustomTitle,
+        updateImageStyle,
       }}
     >
       {children}

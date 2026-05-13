@@ -105,6 +105,22 @@ input, textarea, select, button {
   background: linear-gradient(to right, #ffffff, #f8fafc);
 }
 
+/* Credit footer (does not appear in printed/exported CV) */
+.app-credit {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 10px 16px;
+  letter-spacing: 0.4px;
+  background: rgba(15, 23, 42, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-credit strong {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
 /* ============================================
    STYLED CV DESIGN
    ============================================ */
@@ -162,17 +178,39 @@ input, textarea, select, button {
 .cv-profile-image-wrapper {
   width: 32mm;
   height: 32mm;
-  border-radius: 50%;
-  border: 3px solid #fff;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   background: #34495e;
+  position: relative;
+}
+
+/* Frame shapes */
+.cv-image-shape-circle  { border-radius: 50%; }
+.cv-image-shape-square  { border-radius: 0; }
+.cv-image-shape-rounded { border-radius: 6mm; }
+.cv-image-shape-hexagon {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.cv-image-shape-faded {
+  border-radius: 50%;
+  box-shadow: none;
+  -webkit-mask-image: radial-gradient(circle, #000 55%, transparent 80%);
+          mask-image: radial-gradient(circle, #000 55%, transparent 80%);
+}
+
+/* Optional white border — disabled for hexagon (clip-path strips it) and faded */
+.cv-image-bordered.cv-image-shape-circle,
+.cv-image-bordered.cv-image-shape-square,
+.cv-image-bordered.cv-image-shape-rounded {
+  border: 3px solid #fff;
 }
 
 .cv-profile-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform-origin: center center;
 }
 
 .cv-profile-placeholder {
@@ -181,7 +219,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #3498db, #2980b9);
+  background: linear-gradient(135deg, var(--cv-accent), var(--cv-primary));
 }
 
 .cv-profile-placeholder svg {

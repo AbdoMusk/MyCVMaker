@@ -102,6 +102,11 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Credit footer */}
+        <footer className="app-credit no-print">
+          made in a hurry by <strong>Abdellah AOUKRAD</strong>
+        </footer>
       </main>
     </CVProvider>
   );

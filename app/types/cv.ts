@@ -78,10 +78,21 @@ export interface ThemeColors {
   useGradient: boolean;
 }
 
+export type ImageShape = 'circle' | 'square' | 'rounded' | 'hexagon' | 'faded';
+
+export interface ImageStyle {
+  shape: ImageShape;
+  zoom: number;     // 1.0 - 3.0
+  offsetX: number;  // -100 to 100 (percent)
+  offsetY: number;  // -100 to 100 (percent)
+  border: boolean;  // show white border around frame (when shape supports it)
+}
+
 export interface CVSettings {
   language: Language;
   theme: ThemeColors;
   customTitles: Partial<Record<SectionTitleKey, string>>;
+  imageStyle: ImageStyle;
 }
 
 export interface CVData {
@@ -256,6 +267,13 @@ export const defaultSettings: CVSettings = {
     useGradient: true,
   },
   customTitles: {},
+  imageStyle: {
+    shape: 'circle',
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    border: true,
+  },
 };
 
 export const defaultCVData: CVData = {

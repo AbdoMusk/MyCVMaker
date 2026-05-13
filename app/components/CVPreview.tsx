@@ -132,12 +132,22 @@ export default function CVPreview() {
         <aside className="cv-sidebar">
           {/* Profile Image */}
           <div className="cv-profile-section">
-            <div className="cv-profile-image-wrapper">
+            <div
+              className={[
+                'cv-profile-image-wrapper',
+                `cv-image-shape-${settings.imageStyle.shape}`,
+                settings.imageStyle.border ? 'cv-image-bordered' : '',
+              ].filter(Boolean).join(' ')}
+            >
               {personalInfo.profileImage ? (
                 <img
                   src={personalInfo.profileImage}
                   alt={personalInfo.fullName}
                   className="cv-profile-image"
+                  style={{
+                    transform: `scale(${settings.imageStyle.zoom})`,
+                    objectPosition: `${50 + settings.imageStyle.offsetX}% ${50 + settings.imageStyle.offsetY}%`,
+                  }}
                 />
               ) : (
                 <div className="cv-profile-placeholder">
