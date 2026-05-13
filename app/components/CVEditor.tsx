@@ -19,7 +19,17 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useCV } from '../context/CVContext';
-import { WorkExperience, Education, Skill, Certification, Project } from '../types/cv';
+import {
+  WorkExperience,
+  Education,
+  Skill,
+  Certification,
+  Project,
+  COLOR_PRESETS,
+  TRANSLATIONS,
+  SectionTitleKey,
+  Language,
+} from '../types/cv';
 
 // Helper function to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -170,6 +180,198 @@ const CollapsibleSection = ({
     </div>
   );
 };
+
+// Settings Section — language, theme colors, and per-section title overrides
+const SettingsSection = () => {
+  const { cvData, updateSettings, updateTheme, updateCustomTitle } = useCV();
+  const { settings } = cvData;
+  const { theme, language, customTitles } = settings;
+
+  const sectionKeys: { key: SectionTitleKey; labelEn: string; labelFr: string }[] = [
+    { key: 'aboutMe',        labelEn: 'About Me',        labelFr: 'À Propos' },
+    { key: 'workExperience', labelEn: 'Work Experience', labelFr: 'Expérience' },
+    { key: 'education',      labelEn: 'Education',       labelFr: 'Formation' },
+    { key: 'skills',         labelEn: 'Skills',          labelFr: 'Compétences' },
+    { key: 'softSkills',     labelEn: 'Soft Skills',     labelFr: 'Qualités' },
+    { key: 'languages',      labelEn: 'Languages',       labelFr: 'Langues' },
+    { key: 'contact',        labelEn: 'Contact',         labelFr: 'Contact' },
+    { key: 'certifications', labelEn: 'Certifications',  labelFr: 'Certifications' },
+    { key: 'projects',       labelEn: 'Projects',        labelFr: 'Projets' },
+  ];
+
+  const applyPreset = (presetId: string) => {
+    const preset = COLOR_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+    updateTheme({
+      preset: preset.id,
+      primary: preset.primary,
+      secondary: preset.secondary,
+      accent: preset.accent,
+      accentSecondary: preset.accentSecondary,
+      sidebarBg: preset.sidebarBg,
+    });
+  };
+
+  return (
+    <CollapsibleSection title="Settings & Theme" defaultOpen={false}>
+      {/* Language */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Language / Langue</label>
+        <div className="flex gap-2">
+          {(['en', 'fr'] as Language[]).map((lng) => (
+            <button
+              key={lng}
+              onClick={() => updateSettings({ language: lng })}
+              className={`flex-1 px-3 py-2 text-sm rounded-md border transition-colors ${
+                language === lng
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {lng === 'en' ? 'English' : 'Français'}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Changes default section titles. Custom titles below override the language defaults.
+        </p>
+      </div>
+
+      {/* Theme presets */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Color Theme</label>
+        <div className="grid grid-cols-5 gap-2">
+          {COLOR_PRESETS.map((preset) => {
+            const active = theme.preset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => applyPreset(preset.id)}
+                title={preset.name}
+                className={`relative h-12 rounded-md overflow-hidden border-2 transition-all ${
+                  active ? 'border-gray-800 scale-105 shadow-md' : 'border-transparent hover:border-gray-300'
+                }`}
+                style={{
+                  background: `linear-gradient(135deg, ${preset.primary} 0%, ${preset.secondary} 100%)`,
+                }}
+              >
+                <span
+                  className="absolute bottom-1 right-1 w-3 h-3 rounded-full border border-white"
+                  style={{ background: preset.accent }}
+                />
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">{COLOR_PRESETS.find(p => p.id === theme.preset)?.name ?? 'Custom'}</p>
+      </div>
+
+      {/* Custom colors */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Custom Colors</label>
+        <div className="grid grid-cols-2 gap-3">
+          <ColorField
+            label="Primary"
+            value={theme.primary}
+            onChange={(v) => updateTheme({ primary: v, preset: 'custom' })}
+          />
+          <ColorField
+            label="Secondary (gradient end)"
+            value={theme.secondary}
+            onChange={(v) => updateTheme({ secondary: v, preset: 'custom' })}
+          />
+          <ColorField
+            label="Accent"
+            value={theme.accent}
+            onChange={(v) => updateTheme({ accent: v, preset: 'custom' })}
+          />
+          <ColorField
+            label="Accent (gradient end)"
+            value={theme.accentSecondary}
+            onChange={(v) => updateTheme({ accentSecondary: v, preset: 'custom' })}
+          />
+          <ColorField
+            label="Sidebar Background"
+            value={theme.sidebarBg}
+            onChange={(v) => updateTheme({ sidebarBg: v, preset: 'custom' })}
+          />
+        </div>
+      </div>
+
+      {/* Gradient toggle */}
+      <div className="mb-5">
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={theme.useGradient}
+            onChange={(e) => updateTheme({ useGradient: e.target.checked })}
+            className="rounded border-gray-300"
+          />
+          Use gradient backgrounds (header & skill bars)
+        </label>
+        <p className="text-xs text-gray-500 mt-1 ml-6">
+          When off, the header and skill bars use solid primary/accent colors.
+        </p>
+      </div>
+
+      {/* Custom section titles */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Custom Section Titles</label>
+        <p className="text-xs text-gray-500 mb-3">
+          Leave blank to use the default for the selected language.
+        </p>
+        <div className="space-y-2">
+          {sectionKeys.map(({ key, labelEn, labelFr }) => {
+            const placeholder = TRANSLATIONS[language][key];
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 w-28 flex-shrink-0">
+                  {language === 'fr' ? labelFr : labelEn}
+                </span>
+                <input
+                  type="text"
+                  value={customTitles[key] ?? ''}
+                  onChange={(e) => updateCustomTitle(key, e.target.value)}
+                  placeholder={placeholder}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+};
+
+// Color picker + hex input pair
+const ColorField = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <div>
+    <label className="block text-xs text-gray-600 mb-1">{label}</label>
+    <div className="flex items-center gap-2">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-10 h-9 border border-gray-300 rounded cursor-pointer flex-shrink-0"
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+);
 
 // Personal Info Section
 const PersonalInfoSection = () => {
@@ -1042,6 +1244,7 @@ export default function CVEditor() {
             Fill in your information below. Changes appear in real-time on the preview.
           </p>
         </div>
+        <SettingsSection />
         <PersonalInfoSection />
         <ProfessionalSummarySection />
         <WorkExperienceSection />

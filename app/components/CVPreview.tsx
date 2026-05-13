@@ -2,13 +2,15 @@
 
 import React from 'react';
 import { useCV } from '../context/CVContext';
+import { CVSettings, SectionTitleKey, TRANSLATIONS, resolveSectionTitle } from '../types/cv';
 
-// Helper function to format date
-const formatDate = (dateStr: string, showMonth = true): string => {
+// Helper function to format date in the active language
+const formatDate = (dateStr: string, language: 'en' | 'fr', showMonth = true): string => {
   if (!dateStr) return '';
   const date = new Date(dateStr + '-01');
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
   if (showMonth) {
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
   }
   return date.getFullYear().toString();
 };
@@ -84,6 +86,19 @@ const SectionTitle = ({ children, icon }: { children: React.ReactNode; icon: Rea
   </div>
 );
 
+// Build the inline CSS-variable style for the active theme
+function buildThemeStyle(settings: CVSettings): React.CSSProperties {
+  const { theme } = settings;
+  const headerSecondary = theme.useGradient ? theme.secondary : theme.primary;
+  return {
+    ['--cv-primary' as any]: theme.primary,
+    ['--cv-secondary' as any]: headerSecondary,
+    ['--cv-accent' as any]: theme.accent,
+    ['--cv-accent-2' as any]: theme.useGradient ? theme.accentSecondary : theme.accent,
+    ['--cv-sidebar-bg' as any]: theme.sidebarBg,
+  };
+}
+
 export default function CVPreview() {
   const { cvData } = useCV();
   const {
@@ -94,17 +109,23 @@ export default function CVPreview() {
     skills,
     certifications,
     projects,
+    settings,
   } = cvData;
+
+  const lang = settings.language;
+  const t = TRANSLATIONS[lang];
+  const title = (key: SectionTitleKey) => resolveSectionTitle(key, settings);
+  const themeStyle = buildThemeStyle(settings);
 
   const technicalSkills = skills.filter((s) => s.category === 'technical' && s.name);
   const softSkills = skills.filter((s) => s.category === 'soft' && s.name);
   const languages = skills.filter((s) => s.category === 'language' && s.name);
 
   return (
-    <div className="cv-styled-page" id="cv-content">
+    <div className="cv-styled-page" id="cv-content" style={themeStyle}>
       {/* Decorative Header Background */}
       <div className="cv-header-bg"></div>
-      
+
       {/* Main Content */}
       <div className="cv-content-wrapper">
         {/* Left Sidebar */}
@@ -113,8 +134,8 @@ export default function CVPreview() {
           <div className="cv-profile-section">
             <div className="cv-profile-image-wrapper">
               {personalInfo.profileImage ? (
-                <img 
-                  src={personalInfo.profileImage} 
+                <img
+                  src={personalInfo.profileImage}
                   alt={personalInfo.fullName}
                   className="cv-profile-image"
                 />
@@ -130,7 +151,7 @@ export default function CVPreview() {
 
           {/* Contact Info */}
           <div className="cv-sidebar-section">
-            <h3 className="cv-sidebar-title">Contact</h3>
+            <h3 className="cv-sidebar-title">{title('contact')}</h3>
             <div className="cv-contact-list">
               {personalInfo.email && (
                 <div className="cv-contact-item">
@@ -168,14 +189,14 @@ export default function CVPreview() {
           {/* Skills */}
           {(technicalSkills.length > 0 || softSkills.length > 0) && (
             <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">Skills</h3>
+              <h3 className="cv-sidebar-title">{title('skills')}</h3>
               <div className="cv-skills-list">
                 {technicalSkills.map((skill) => (
                   <div key={skill.id} className="cv-skill-item">
                     <span className="cv-skill-name">{skill.name}</span>
                     <div className="cv-skill-bar">
-                      <div 
-                        className="cv-skill-fill" 
+                      <div
+                        className="cv-skill-fill"
                         style={{ width: skill.level === 'expert' ? '100%' : skill.level === 'advanced' ? '80%' : skill.level === 'intermediate' ? '60%' : '40%' }}
                       ></div>
                     </div>
@@ -188,15 +209,15 @@ export default function CVPreview() {
           {/* Languages */}
           {languages.length > 0 && (
             <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">Languages</h3>
+              <h3 className="cv-sidebar-title">{title('languages')}</h3>
               <div className="cv-languages-list">
-                {languages.map((lang) => (
-                  <div key={lang.id} className="cv-language-item">
-                    <span>{lang.name}</span>
+                {languages.map((lng) => (
+                  <div key={lng.id} className="cv-language-item">
+                    <span>{lng.name}</span>
                     <span className="cv-language-level">
-                      {lang.level === 'expert' ? 'Native/Fluent' : 
-                       lang.level === 'advanced' ? 'Advanced' : 
-                       lang.level === 'intermediate' ? 'Intermediate' : 'Basic'}
+                      {lng.level === 'expert' ? t.nativeFluent :
+                       lng.level === 'advanced' ? t.advanced :
+                       lng.level === 'intermediate' ? t.intermediate : t.basic}
                     </span>
                   </div>
                 ))}
@@ -207,7 +228,7 @@ export default function CVPreview() {
           {/* Soft Skills */}
           {softSkills.length > 0 && (
             <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">Soft Skills</h3>
+              <h3 className="cv-sidebar-title">{title('softSkills')}</h3>
               <div className="cv-soft-skills">
                 {softSkills.map((skill) => (
                   <span key={skill.id} className="cv-soft-skill-tag">{skill.name}</span>
@@ -228,7 +249,7 @@ export default function CVPreview() {
           {/* Professional Summary */}
           {professionalSummary && (
             <section className="cv-main-section">
-              <SectionTitle icon={<UserIcon />}>About Me</SectionTitle>
+              <SectionTitle icon={<UserIcon />}>{title('aboutMe')}</SectionTitle>
               <p className="cv-summary-text">{professionalSummary}</p>
             </section>
           )}
@@ -236,7 +257,7 @@ export default function CVPreview() {
           {/* Work Experience */}
           {workExperience.length > 0 && workExperience.some(exp => exp.jobTitle || exp.company) && (
             <section className="cv-main-section">
-              <SectionTitle icon={<BriefcaseIcon />}>Work Experience</SectionTitle>
+              <SectionTitle icon={<BriefcaseIcon />}>{title('workExperience')}</SectionTitle>
               <div className="cv-timeline">
                 {workExperience.map((exp) => (
                   (exp.jobTitle || exp.company) && (
@@ -249,7 +270,7 @@ export default function CVPreview() {
                             <p className="cv-timeline-subtitle">{exp.company}{exp.location && ` • ${exp.location}`}</p>
                           </div>
                           <span className="cv-timeline-date">
-                            {formatDate(exp.startDate)} - {exp.current ? 'Present' : formatDate(exp.endDate)}
+                            {formatDate(exp.startDate, lang)} - {exp.current ? t.present : formatDate(exp.endDate, lang)}
                           </span>
                         </div>
                         {exp.achievements.filter(a => a).length > 0 && (
@@ -270,7 +291,7 @@ export default function CVPreview() {
           {/* Education */}
           {education.length > 0 && education.some(edu => edu.degree || edu.institution) && (
             <section className="cv-main-section">
-              <SectionTitle icon={<GraduationIcon />}>Education</SectionTitle>
+              <SectionTitle icon={<GraduationIcon />}>{title('education')}</SectionTitle>
               <div className="cv-timeline">
                 {education.map((edu) => (
                   (edu.degree || edu.institution) && (
@@ -281,9 +302,9 @@ export default function CVPreview() {
                           <div>
                             <h4 className="cv-timeline-title">{edu.degree}</h4>
                             <p className="cv-timeline-subtitle">{edu.institution}{edu.location && ` • ${edu.location}`}</p>
-                            {edu.gpa && <p className="cv-timeline-meta">GPA: {edu.gpa}</p>}
+                            {edu.gpa && <p className="cv-timeline-meta">{t.gpa}: {edu.gpa}</p>}
                           </div>
-                          <span className="cv-timeline-date">{formatDate(edu.graduationDate)}</span>
+                          <span className="cv-timeline-date">{formatDate(edu.graduationDate, lang)}</span>
                         </div>
                       </div>
                     </div>
@@ -296,14 +317,14 @@ export default function CVPreview() {
           {/* Certifications */}
           {certifications.length > 0 && certifications.some(cert => cert.name) && (
             <section className="cv-main-section">
-              <SectionTitle icon={<CertIcon />}>Certifications</SectionTitle>
+              <SectionTitle icon={<CertIcon />}>{title('certifications')}</SectionTitle>
               <div className="cv-certs-grid">
                 {certifications.map((cert) => (
                   cert.name && (
                     <div key={cert.id} className="cv-cert-card">
                       <span className="cv-cert-name">{cert.name}</span>
                       <span className="cv-cert-issuer">{cert.issuer}</span>
-                      {cert.date && <span className="cv-cert-date">{formatDate(cert.date)}</span>}
+                      {cert.date && <span className="cv-cert-date">{formatDate(cert.date, lang)}</span>}
                     </div>
                   )
                 ))}
@@ -314,7 +335,7 @@ export default function CVPreview() {
           {/* Projects */}
           {projects.length > 0 && projects.some(proj => proj.name) && (
             <section className="cv-main-section">
-              <SectionTitle icon={<ProjectIcon />}>Projects</SectionTitle>
+              <SectionTitle icon={<ProjectIcon />}>{title('projects')}</SectionTitle>
               <div className="cv-projects-list">
                 {projects.map((proj) => (
                   proj.name && (

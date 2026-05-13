@@ -8,6 +8,7 @@
   --cv-primary: #2c3e50;
   --cv-secondary: #34495e;
   --cv-accent: #3498db;
+  --cv-accent-2: #2ecc71;
   --cv-sidebar-bg: #2c3e50;
   --cv-sidebar-text: #ecf0f1;
 }
@@ -267,7 +268,7 @@ input, textarea, select, button {
 
 .cv-skill-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--cv-accent), #2ecc71);
+  background: linear-gradient(90deg, var(--cv-accent), var(--cv-accent-2));
   border-radius: 1mm;
   transition: width 0.3s ease;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { CVData, defaultCVData } from '../types/cv';
+import { CVData, CVSettings, defaultCVData, defaultSettings } from '../types/cv';
 
 interface CVContextType {
   cvData: CVData;
@@ -13,11 +13,35 @@ interface CVContextType {
   updateSkills: (skills: CVData['skills']) => void;
   updateCertifications: (certifications: CVData['certifications']) => void;
   updateProjects: (projects: CVData['projects']) => void;
+  updateSettings: (settings: Partial<CVSettings>) => void;
+  updateTheme: (theme: Partial<CVSettings['theme']>) => void;
+  updateCustomTitle: (key: keyof CVSettings['customTitles'], value: string) => void;
 }
 
 const CVContext = createContext<CVContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'cv-maker-data';
+
+// Merge stored data with defaults so older payloads without `settings` keep working
+function migrate(raw: any): CVData {
+  if (!raw || typeof raw !== 'object') return defaultCVData;
+  return {
+    ...defaultCVData,
+    ...raw,
+    settings: {
+      ...defaultSettings,
+      ...(raw.settings || {}),
+      theme: {
+        ...defaultSettings.theme,
+        ...((raw.settings && raw.settings.theme) || {}),
+      },
+      customTitles: {
+        ...defaultSettings.customTitles,
+        ...((raw.settings && raw.settings.customTitles) || {}),
+      },
+    },
+  };
+}
 
 export function CVProvider({ children }: { children: ReactNode }) {
   const [cvData, setCVData] = useState<CVData>(defaultCVData);
@@ -28,7 +52,7 @@ export function CVProvider({ children }: { children: ReactNode }) {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
       try {
-        setCVData(JSON.parse(savedData));
+        setCVData(migrate(JSON.parse(savedData)));
       } catch (error) {
         console.error('Failed to parse CV data from local storage', error);
       }
@@ -78,6 +102,38 @@ export function CVProvider({ children }: { children: ReactNode }) {
     setCVData(prev => ({ ...prev, projects }));
   };
 
+  const updateSettings = (settings: Partial<CVSettings>) => {
+    setCVData(prev => ({
+      ...prev,
+      settings: { ...prev.settings, ...settings },
+    }));
+  };
+
+  const updateTheme = (theme: Partial<CVSettings['theme']>) => {
+    setCVData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        theme: { ...prev.settings.theme, ...theme },
+      },
+    }));
+  };
+
+  const updateCustomTitle = (key: keyof CVSettings['customTitles'], value: string) => {
+    setCVData(prev => {
+      const nextTitles = { ...prev.settings.customTitles };
+      if (value && value.trim()) {
+        nextTitles[key] = value;
+      } else {
+        delete nextTitles[key];
+      }
+      return {
+        ...prev,
+        settings: { ...prev.settings, customTitles: nextTitles },
+      };
+    });
+  };
+
   return (
     <CVContext.Provider
       value={{
@@ -90,6 +146,9 @@ export function CVProvider({ children }: { children: ReactNode }) {
         updateSkills,
         updateCertifications,
         updateProjects,
+        updateSettings,
+        updateTheme,
+        updateCustomTitle,
       }}
     >
       {children}
