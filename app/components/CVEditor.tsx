@@ -100,6 +100,85 @@ const InputField = ({
   </div>
 );
 
+// Date field with required year and optional month.
+// Stored value is either 'YYYY' or 'YYYY-MM'.
+const MONTH_OPTIONS: { value: string; en: string; fr: string }[] = [
+  { value: '01', en: 'January',   fr: 'Janvier' },
+  { value: '02', en: 'February',  fr: 'Février' },
+  { value: '03', en: 'March',     fr: 'Mars' },
+  { value: '04', en: 'April',     fr: 'Avril' },
+  { value: '05', en: 'May',       fr: 'Mai' },
+  { value: '06', en: 'June',      fr: 'Juin' },
+  { value: '07', en: 'July',      fr: 'Juillet' },
+  { value: '08', en: 'August',    fr: 'Août' },
+  { value: '09', en: 'September', fr: 'Septembre' },
+  { value: '10', en: 'October',   fr: 'Octobre' },
+  { value: '11', en: 'November',  fr: 'Novembre' },
+  { value: '12', en: 'December',  fr: 'Décembre' },
+];
+
+const DateField = ({
+  label,
+  value,
+  onChange,
+  disabled = false,
+  language = 'en',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  language?: Language;
+}) => {
+  const parts = value ? value.split('-') : [];
+  const year = parts[0] ?? '';
+  const month = parts[1] ?? '';
+
+  const emit = (nextYear: string, nextMonth: string) => {
+    const y = nextYear.trim();
+    if (!y) {
+      onChange('');
+      return;
+    }
+    onChange(nextMonth ? `${y}-${nextMonth}` : y);
+  };
+
+  return (
+    <div className="mb-3">
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div className="flex gap-2">
+        <select
+          value={month}
+          disabled={disabled}
+          onChange={(e) => emit(year, e.target.value)}
+          className="w-1/2 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white disabled:bg-gray-100"
+        >
+          <option value="">{language === 'fr' ? 'Mois (facultatif)' : 'Month (optional)'}</option>
+          {MONTH_OPTIONS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {language === 'fr' ? m.fr : m.en}
+            </option>
+          ))}
+        </select>
+        <input
+          type="number"
+          min={1900}
+          max={2100}
+          step={1}
+          value={year}
+          disabled={disabled}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+            emit(raw, month);
+          }}
+          placeholder={language === 'fr' ? 'Année' : 'Year'}
+          className="w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100"
+        />
+      </div>
+    </div>
+  );
+};
+
 // TextArea Component
 const TextAreaField = ({
   label,
@@ -856,19 +935,18 @@ const WorkExperienceSection = () => {
                 Currently working here
               </label>
             </div>
-            <InputField
+            <DateField
               label="Start Date"
               value={exp.startDate}
               onChange={(value) => updateExperience(exp.id, { startDate: value })}
-              placeholder="2021-03"
-              type="month"
+              language={cvData.settings.language}
             />
-            <InputField
+            <DateField
               label="End Date"
               value={exp.current ? '' : exp.endDate}
               onChange={(value) => updateExperience(exp.id, { endDate: value })}
-              placeholder="2023-12"
-              type="month"
+              disabled={exp.current}
+              language={cvData.settings.language}
             />
           </div>
           <div className="mt-3">
@@ -1006,11 +1084,11 @@ const EducationSection = () => {
                       onChange={(value) => updateEdu(edu.id, { location: value })}
                       placeholder="City, State"
                     />
-                    <InputField
+                    <DateField
                       label="Graduation Date"
                       value={edu.graduationDate}
                       onChange={(value) => updateEdu(edu.id, { graduationDate: value })}
-                      type="month"
+                      language={cvData.settings.language}
                     />
                     <InputField
                       label="GPA (Optional)"
@@ -1326,11 +1404,11 @@ const CertificationsSection = () => {
                       onChange={(value) => updateCert(cert.id, { issuer: value })}
                       placeholder="Amazon Web Services"
                     />
-                    <InputField
+                    <DateField
                       label="Date"
                       value={cert.date}
                       onChange={(value) => updateCert(cert.id, { date: value })}
-                      type="month"
+                      language={cvData.settings.language}
                     />
                   </div>
                 </div>

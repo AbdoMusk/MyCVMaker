@@ -4,15 +4,18 @@ import React from 'react';
 import { useCV } from '../context/CVContext';
 import { CVSettings, SectionTitleKey, TRANSLATIONS, resolveSectionTitle } from '../types/cv';
 
-// Helper function to format date in the active language
-const formatDate = (dateStr: string, language: 'en' | 'fr', showMonth = true): string => {
+// Helper function to format date in the active language.
+// Accepts either 'YYYY' (year only) or 'YYYY-MM' (year + month).
+const formatDate = (dateStr: string, language: 'en' | 'fr'): string => {
   if (!dateStr) return '';
-  const date = new Date(dateStr + '-01');
+  const trimmed = dateStr.trim();
+  if (/^\d{4}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return trimmed;
+  const date = new Date(`${trimmed}-01`);
+  if (isNaN(date.getTime())) return trimmed;
   const locale = language === 'fr' ? 'fr-FR' : 'en-US';
-  if (showMonth) {
-    return date.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
-  }
-  return date.getFullYear().toString();
+  return date.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
 };
 
 // Icons

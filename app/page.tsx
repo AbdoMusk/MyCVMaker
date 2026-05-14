@@ -15,33 +15,73 @@ export default function Home() {
     if (!cvElement) return;
 
     setIsGenerating(true);
-    
+
+    // A4 dimensions in CSS pixels at 96 DPI (1mm ≈ 3.7795px)
+    const A4_WIDTH_PX = 793.7;
+    const A4_HEIGHT_PX = 1122.5;
+    const PIXEL_RATIO = 2;
+
+    // Hide preview-only page-break guides during capture
+    cvElement.classList.add('cv-exporting');
+
     try {
-      // Create high-resolution PNG using html-to-image
+      // Measure natural height of the rendered CV (one or more pages)
+      const naturalHeight = cvElement.getBoundingClientRect().height;
+      const totalPages = Math.max(1, Math.ceil(naturalHeight / A4_HEIGHT_PX));
+      const captureHeight = totalPages * A4_HEIGHT_PX;
+
       const imgData = await toPng(cvElement, {
         quality: 1.0,
-        pixelRatio: 2, // Higher resolution for crisp output
+        pixelRatio: PIXEL_RATIO,
         backgroundColor: '#ffffff',
-        width: 793.7, // A4 width in pixels (210mm)
-        height: 1122.5, // A4 height in pixels (297mm)
+        width: A4_WIDTH_PX,
+        height: captureHeight,
       });
 
-      // Create PDF with A4 dimensions
+      const fullImg = new Image();
+      fullImg.src = imgData;
+      await new Promise<void>((resolve, reject) => {
+        fullImg.onload = () => resolve();
+        fullImg.onerror = () => reject(new Error('Failed to load capture image'));
+      });
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       });
-      
-      // Add image to PDF (0, 0, 210mm width, 297mm height)
-      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
-      
-      // Download the PDF
+
+      const sliceWidthPx = A4_WIDTH_PX * PIXEL_RATIO;
+      const sliceHeightPx = A4_HEIGHT_PX * PIXEL_RATIO;
+
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) pdf.addPage();
+
+        const canvas = document.createElement('canvas');
+        canvas.width = sliceWidthPx;
+        canvas.height = sliceHeightPx;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          fullImg,
+          0, i * sliceHeightPx,
+          sliceWidthPx, sliceHeightPx,
+          0, 0,
+          sliceWidthPx, sliceHeightPx,
+        );
+
+        const pageImgData = canvas.toDataURL('image/png');
+        pdf.addImage(pageImgData, 'PNG', 0, 0, 210, 297);
+      }
+
       pdf.save('my-cv.pdf');
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
     } finally {
+      cvElement.classList.remove('cv-exporting');
       setIsGenerating(false);
     }
   };
