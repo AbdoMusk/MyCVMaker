@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCV } from '../context/CVContext';
 import { CVSettings, SectionTitleKey, TRANSLATIONS, resolveSectionTitle } from '../types/cv';
 
@@ -79,6 +79,24 @@ const UserIcon = () => (
   </svg>
 );
 
+const SkillsIcon = () => (
+  <svg className="cv-section-icon" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2 9.19 8.63 2 9.27l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-6.99L22 9.27l-7.19-.64L12 2z"/>
+  </svg>
+);
+
+const LanguageIcon = () => (
+  <svg className="cv-section-icon" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+  </svg>
+);
+
+const SoftSkillIcon = () => (
+  <svg className="cv-section-icon" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>
+);
+
 // Section Title Component with Icon
 const SectionTitle = ({ children, icon }: { children: React.ReactNode; icon: React.ReactNode }) => (
   <div className="cv-styled-section-title">
@@ -124,143 +142,150 @@ export default function CVPreview() {
   const softSkills = skills.filter((s) => s.category === 'soft' && s.name);
   const languages = skills.filter((s) => s.category === 'language' && s.name);
 
-  return (
-    <div className="cv-styled-page" id="cv-content" style={themeStyle}>
-      {/* Decorative Header Background */}
-      <div className="cv-header-bg"></div>
+  // After every render, push any element that straddles a visual page boundary
+  // down to the next page so it is never visually cut in half.
+  useEffect(() => {
+    const cvPage = document.getElementById('cv-content');
+    if (!cvPage) return;
 
-      {/* Main Content */}
-      <div className="cv-content-wrapper">
-        {/* Left Sidebar */}
-        <aside className="cv-sidebar">
-          {/* Profile Image */}
-          <div className="cv-profile-section">
+    // Measure the pixel equivalent of 297mm (one A4 page height).
+    const ruler = document.createElement('div');
+    ruler.style.cssText = 'position:fixed;top:-9999px;left:-9999px;height:297mm;width:1px;';
+    document.body.appendChild(ruler);
+    const pageHeightPx = ruler.getBoundingClientRect().height;
+    document.body.removeChild(ruler);
+    if (!pageHeightPx) return;
+
+    const selector = '.cv-timeline-item, .cv-project-card, .cv-cert-card';
+    const elements = Array.from(cvPage.querySelectorAll<HTMLElement>(selector));
+
+    // Reset any previously injected margins before recalculating.
+    elements.forEach((el) => { el.style.marginTop = ''; });
+
+    // Process in DOM order so each re-measurement sees the already-adjusted
+    // positions of earlier siblings.
+    elements.forEach((el) => {
+      const cvRect = cvPage.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const elTop    = elRect.top    - cvRect.top;
+      const elBottom = elRect.bottom - cvRect.top;
+
+      const pageIndex = Math.floor(elTop / pageHeightPx);
+      const boundary  = (pageIndex + 1) * pageHeightPx;
+
+      if (elTop < boundary && elBottom > boundary && elRect.height < pageHeightPx * 0.9) {
+        const currentMargin = parseFloat(getComputedStyle(el).marginTop) || 0;
+        el.style.marginTop = `${currentMargin + (boundary - elTop)}px`;
+      }
+    });
+  }, [cvData]);
+
+  const profileImageBlock = (
+    <div
+      className={[
+        'cv-profile-image-wrapper',
+        `cv-image-shape-${settings.imageStyle.shape}`,
+        settings.imageStyle.border ? 'cv-image-bordered' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      {personalInfo.profileImage ? (
+        <img
+          src={personalInfo.profileImage}
+          alt={personalInfo.fullName}
+          className="cv-profile-image"
+          style={{
+            transform: `scale(${settings.imageStyle.zoom})`,
+            objectPosition: `${50 + settings.imageStyle.offsetX}% ${50 + settings.imageStyle.offsetY}%`,
+          }}
+        />
+      ) : (
+        <div className="cv-profile-placeholder">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+
+  const contactItems = (
+    <>
+      {personalInfo.email && (
+        <div className="cv-contact-item">
+          <EmailIcon />
+          <span>{personalInfo.email}</span>
+        </div>
+      )}
+      {personalInfo.phone && (
+        <div className="cv-contact-item">
+          <PhoneIcon />
+          <span>{personalInfo.phone}</span>
+        </div>
+      )}
+      {personalInfo.location && (
+        <div className="cv-contact-item">
+          <LocationIcon />
+          <span>{personalInfo.location}</span>
+        </div>
+      )}
+      {personalInfo.linkedin && (
+        <div className="cv-contact-item">
+          <LinkedInIcon />
+          <span>{personalInfo.linkedin}</span>
+        </div>
+      )}
+      {personalInfo.website && (
+        <div className="cv-contact-item">
+          <WebsiteIcon />
+          <span>{personalInfo.website}</span>
+        </div>
+      )}
+    </>
+  );
+
+  const skillsList = (
+    <div className="cv-skills-list">
+      {technicalSkills.map((skill) => (
+        <div key={skill.id} className="cv-skill-item">
+          <span className="cv-skill-name">{skill.name}</span>
+          <div className="cv-skill-bar">
             <div
-              className={[
-                'cv-profile-image-wrapper',
-                `cv-image-shape-${settings.imageStyle.shape}`,
-                settings.imageStyle.border ? 'cv-image-bordered' : '',
-              ].filter(Boolean).join(' ')}
-            >
-              {personalInfo.profileImage ? (
-                <img
-                  src={personalInfo.profileImage}
-                  alt={personalInfo.fullName}
-                  className="cv-profile-image"
-                  style={{
-                    transform: `scale(${settings.imageStyle.zoom})`,
-                    objectPosition: `${50 + settings.imageStyle.offsetX}% ${50 + settings.imageStyle.offsetY}%`,
-                  }}
-                />
-              ) : (
-                <div className="cv-profile-placeholder">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                  </svg>
-                </div>
-              )}
-            </div>
+              className="cv-skill-fill"
+              style={{ width: skill.level === 'expert' ? '100%' : skill.level === 'advanced' ? '80%' : skill.level === 'intermediate' ? '60%' : '40%' }}
+            ></div>
           </div>
+        </div>
+      ))}
+    </div>
+  );
 
-          {/* Contact Info */}
-          <div className="cv-sidebar-section">
-            <h3 className="cv-sidebar-title">{title('contact')}</h3>
-            <div className="cv-contact-list">
-              {personalInfo.email && (
-                <div className="cv-contact-item">
-                  <EmailIcon />
-                  <span>{personalInfo.email}</span>
-                </div>
-              )}
-              {personalInfo.phone && (
-                <div className="cv-contact-item">
-                  <PhoneIcon />
-                  <span>{personalInfo.phone}</span>
-                </div>
-              )}
-              {personalInfo.location && (
-                <div className="cv-contact-item">
-                  <LocationIcon />
-                  <span>{personalInfo.location}</span>
-                </div>
-              )}
-              {personalInfo.linkedin && (
-                <div className="cv-contact-item">
-                  <LinkedInIcon />
-                  <span>{personalInfo.linkedin}</span>
-                </div>
-              )}
-              {personalInfo.website && (
-                <div className="cv-contact-item">
-                  <WebsiteIcon />
-                  <span>{personalInfo.website}</span>
-                </div>
-              )}
-            </div>
-          </div>
+  const languagesList = (
+    <div className="cv-languages-list">
+      {languages.map((lng) => (
+        <div key={lng.id} className="cv-language-item">
+          <span>{lng.name}</span>
+          <span className="cv-language-level">
+            {lng.level === 'expert' ? t.nativeFluent :
+             lng.level === 'advanced' ? t.advanced :
+             lng.level === 'intermediate' ? t.intermediate : t.basic}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 
-          {/* Skills */}
-          {(technicalSkills.length > 0 || softSkills.length > 0) && (
-            <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">{title('skills')}</h3>
-              <div className="cv-skills-list">
-                {technicalSkills.map((skill) => (
-                  <div key={skill.id} className="cv-skill-item">
-                    <span className="cv-skill-name">{skill.name}</span>
-                    <div className="cv-skill-bar">
-                      <div
-                        className="cv-skill-fill"
-                        style={{ width: skill.level === 'expert' ? '100%' : skill.level === 'advanced' ? '80%' : skill.level === 'intermediate' ? '60%' : '40%' }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+  const softSkillsList = (
+    <div className="cv-soft-skills">
+      {softSkills.map((skill) => (
+        <span key={skill.id} className="cv-soft-skill-tag">{skill.name}</span>
+      ))}
+    </div>
+  );
 
-          {/* Languages */}
-          {languages.length > 0 && (
-            <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">{title('languages')}</h3>
-              <div className="cv-languages-list">
-                {languages.map((lng) => (
-                  <div key={lng.id} className="cv-language-item">
-                    <span>{lng.name}</span>
-                    <span className="cv-language-level">
-                      {lng.level === 'expert' ? t.nativeFluent :
-                       lng.level === 'advanced' ? t.advanced :
-                       lng.level === 'intermediate' ? t.intermediate : t.basic}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Soft Skills */}
-          {softSkills.length > 0 && (
-            <div className="cv-sidebar-section">
-              <h3 className="cv-sidebar-title">{title('softSkills')}</h3>
-              <div className="cv-soft-skills">
-                {softSkills.map((skill) => (
-                  <span key={skill.id} className="cv-soft-skill-tag">{skill.name}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* Main Content Area */}
-        <main className="cv-main">
-          {/* Header */}
-          <header className="cv-main-header">
-            <h1 className="cv-name">{personalInfo.fullName || 'Your Name'}</h1>
-            <p className="cv-job-title">{personalInfo.jobTitle || 'Professional Title'}</p>
-          </header>
-
-          {/* Professional Summary */}
-          {professionalSummary && (
+  const mainSections = (
+    <>
+      {/* Professional Summary */}
+      {professionalSummary && (
             <section className="cv-main-section">
               <SectionTitle icon={<UserIcon />}>{title('aboutMe')}</SectionTitle>
               <p className="cv-summary-text">{professionalSummary}</p>
@@ -368,6 +393,234 @@ export default function CVPreview() {
               </div>
             </section>
           )}
+    </>
+  );
+
+  // Header layout: compact banner across the top, full-width single-column body.
+  // Skills / Languages / Soft Skills live as normal sections in the main flow so
+  // each one claims only the vertical space it actually needs.
+  if (settings.layout === 'header') {
+    return (
+      <div className="cv-styled-page cv-layout-header" id="cv-content" style={themeStyle}>
+        <div className="cv-content-wrapper">
+          <header className="cv-top-banner">
+            <div className="cv-top-banner-photo">{profileImageBlock}</div>
+            <div className="cv-top-banner-identity">
+              <h1 className="cv-name">{personalInfo.fullName || 'Your Name'}</h1>
+              <p className="cv-job-title">{personalInfo.jobTitle || 'Professional Title'}</p>
+            </div>
+            <div className="cv-top-banner-contact">{contactItems}</div>
+          </header>
+
+          <main className="cv-main cv-main-wide">
+            {/* About Me */}
+            {professionalSummary && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<UserIcon />}>{title('aboutMe')}</SectionTitle>
+                <p className="cv-summary-text">{professionalSummary}</p>
+              </section>
+            )}
+
+            {/* Work Experience */}
+            {workExperience.length > 0 && workExperience.some(exp => exp.jobTitle || exp.company) && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<BriefcaseIcon />}>{title('workExperience')}</SectionTitle>
+                <div className="cv-timeline">
+                  {workExperience.map((exp) => (
+                    (exp.jobTitle || exp.company) && (
+                      <div key={exp.id} className="cv-timeline-item">
+                        <div className="cv-timeline-dot"></div>
+                        <div className="cv-timeline-content">
+                          <div className="cv-timeline-header">
+                            <div>
+                              <h4 className="cv-timeline-title">{exp.jobTitle}</h4>
+                              <p className="cv-timeline-subtitle">{exp.company}{exp.location && ` • ${exp.location}`}</p>
+                            </div>
+                            <span className="cv-timeline-date">
+                              {formatDate(exp.startDate, lang)} - {exp.current ? t.present : formatDate(exp.endDate, lang)}
+                            </span>
+                          </div>
+                          {exp.achievements.filter(a => a).length > 0 && (
+                            <ul className="cv-timeline-list">
+                              {exp.achievements.filter(a => a).map((achievement, idx) => (
+                                <li key={idx}>{achievement}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Education */}
+            {education.length > 0 && education.some(edu => edu.degree || edu.institution) && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<GraduationIcon />}>{title('education')}</SectionTitle>
+                <div className="cv-timeline">
+                  {education.map((edu) => (
+                    (edu.degree || edu.institution) && (
+                      <div key={edu.id} className="cv-timeline-item">
+                        <div className="cv-timeline-dot"></div>
+                        <div className="cv-timeline-content">
+                          <div className="cv-timeline-header">
+                            <div>
+                              <h4 className="cv-timeline-title">{edu.degree}</h4>
+                              <p className="cv-timeline-subtitle">{edu.institution}{edu.location && ` • ${edu.location}`}</p>
+                              {edu.gpa && <p className="cv-timeline-meta">{t.gpa}: {edu.gpa}</p>}
+                            </div>
+                            <span className="cv-timeline-date">{formatDate(edu.graduationDate, lang)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Skills — items rendered directly so the 2-col grid actually splits */}
+            {technicalSkills.length > 0 && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<SkillsIcon />}>{title('skills')}</SectionTitle>
+                <div className="cv-skills-grid">
+                  {technicalSkills.map((skill) => (
+                    <div key={skill.id} className="cv-skill-item">
+                      <span className="cv-skill-name">{skill.name}</span>
+                      <div className="cv-skill-bar">
+                        <div
+                          className="cv-skill-fill"
+                          style={{ width: skill.level === 'expert' ? '100%' : skill.level === 'advanced' ? '80%' : skill.level === 'intermediate' ? '60%' : '40%' }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Languages + Soft Skills share a row so short content doesn't waste width */}
+            {(languages.length > 0 || softSkills.length > 0) && (
+              <div className="cv-section-row">
+                {languages.length > 0 && (
+                  <section className="cv-main-section">
+                    <SectionTitle icon={<LanguageIcon />}>{title('languages')}</SectionTitle>
+                    <div className="cv-languages-inline">
+                      {languages.map((lng, idx) => (
+                        <span key={lng.id} className="cv-language-inline-item">
+                          <strong>{lng.name}</strong>
+                          <span className="cv-language-inline-level">
+                            {lng.level === 'expert' ? t.nativeFluent :
+                             lng.level === 'advanced' ? t.advanced :
+                             lng.level === 'intermediate' ? t.intermediate : t.basic}
+                          </span>
+                          {idx < languages.length - 1 && <span className="cv-inline-sep">·</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {softSkills.length > 0 && (
+                  <section className="cv-main-section">
+                    <SectionTitle icon={<SoftSkillIcon />}>{title('softSkills')}</SectionTitle>
+                    {softSkillsList}
+                  </section>
+                )}
+              </div>
+            )}
+
+            {/* Certifications */}
+            {certifications.length > 0 && certifications.some(cert => cert.name) && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<CertIcon />}>{title('certifications')}</SectionTitle>
+                <div className="cv-certs-grid">
+                  {certifications.map((cert) => (
+                    cert.name && (
+                      <div key={cert.id} className="cv-cert-card">
+                        <span className="cv-cert-name">{cert.name}</span>
+                        <span className="cv-cert-issuer">{cert.issuer}</span>
+                        {cert.date && <span className="cv-cert-date">{formatDate(cert.date, lang)}</span>}
+                      </div>
+                    )
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Projects */}
+            {projects.length > 0 && projects.some(proj => proj.name) && (
+              <section className="cv-main-section">
+                <SectionTitle icon={<ProjectIcon />}>{title('projects')}</SectionTitle>
+                <div className="cv-projects-list">
+                  {projects.map((proj) => (
+                    proj.name && (
+                      <div key={proj.id} className="cv-project-card">
+                        <h4 className="cv-project-name">{proj.name}</h4>
+                        {proj.description && <p className="cv-project-desc">{proj.description}</p>}
+                        {proj.technologies && (
+                          <div className="cv-project-tech">
+                            {proj.technologies.split(',').map((tech, idx) => (
+                              <span key={idx} className="cv-tech-tag">{tech.trim()}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ))}
+                </div>
+              </section>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Default sidebar layout
+  return (
+    <div className="cv-styled-page" id="cv-content" style={themeStyle}>
+      {/* Decorative Header Background */}
+      <div className="cv-header-bg"></div>
+
+      <div className="cv-content-wrapper">
+        <aside className="cv-sidebar">
+          <div className="cv-profile-section">{profileImageBlock}</div>
+
+          <div className="cv-sidebar-section">
+            <h3 className="cv-sidebar-title">{title('contact')}</h3>
+            <div className="cv-contact-list">{contactItems}</div>
+          </div>
+
+          {technicalSkills.length > 0 && (
+            <div className="cv-sidebar-section">
+              <h3 className="cv-sidebar-title">{title('skills')}</h3>
+              {skillsList}
+            </div>
+          )}
+
+          {languages.length > 0 && (
+            <div className="cv-sidebar-section">
+              <h3 className="cv-sidebar-title">{title('languages')}</h3>
+              {languagesList}
+            </div>
+          )}
+
+          {softSkills.length > 0 && (
+            <div className="cv-sidebar-section">
+              <h3 className="cv-sidebar-title">{title('softSkills')}</h3>
+              {softSkillsList}
+            </div>
+          )}
+        </aside>
+
+        <main className="cv-main">
+          <header className="cv-main-header">
+            <h1 className="cv-name">{personalInfo.fullName || 'Your Name'}</h1>
+            <p className="cv-job-title">{personalInfo.jobTitle || 'Professional Title'}</p>
+          </header>
+          {mainSections}
         </main>
       </div>
     </div>

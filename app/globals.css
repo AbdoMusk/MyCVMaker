@@ -613,6 +613,279 @@ input, textarea, select, button {
 }
 
 /* ============================================
+   HEADER LAYOUT (alternative to sidebar)
+   ============================================ */
+
+.cv-layout-header .cv-content-wrapper {
+  flex-direction: column;
+  min-height: 297mm;
+}
+
+/* Compact top banner — photo + name/title on the left, contact info on the right */
+.cv-top-banner {
+  background: linear-gradient(135deg, var(--cv-sidebar-bg) 0%, var(--cv-primary) 100%);
+  color: var(--cv-sidebar-text);
+  padding: 7mm 12mm;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6mm;
+}
+
+.cv-top-banner-photo .cv-profile-image-wrapper {
+  width: 22mm;
+  height: 22mm;
+  background: #34495e;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+.cv-top-banner-identity .cv-name {
+  font-size: 20pt;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.5mm;
+  line-height: 1.1;
+}
+
+.cv-top-banner-identity .cv-job-title {
+  font-size: 9.5pt;
+  font-weight: 500;
+  color: var(--cv-accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cv-top-banner-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2mm;
+  min-width: 50mm;
+  max-width: 65mm;
+}
+
+.cv-top-banner-contact .cv-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  font-size: 7.5pt;
+  color: rgba(255,255,255,0.9);
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+/* Full-width single-column body — very tight section rhythm */
+.cv-main-wide {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 5mm 10mm 7mm 10mm !important;
+  flex: 1;
+  gap: 2.5mm;
+  background: #fff;
+}
+
+.cv-layout-header .cv-main-section {
+  margin-bottom: 0;
+}
+
+/* Two short sections (e.g. Languages + Soft Skills) share a row */
+.cv-section-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5mm;
+}
+
+.cv-section-row > .cv-main-section {
+  flex: 1 1 70mm;
+  min-width: 0;
+}
+
+/* Skills grid — 3 compact columns; items are direct children so the grid actually splits */
+.cv-skills-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  column-gap: 6mm;
+  row-gap: 1.5mm;
+  width: 100%;
+}
+
+.cv-skills-grid .cv-skill-item {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5mm;
+  min-width: 0;
+}
+
+.cv-skills-grid .cv-skill-name {
+  color: #374151;
+  font-size: 7.5pt;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-skills-grid .cv-skill-bar {
+  background: rgba(15, 23, 42, 0.08);
+  height: 1.4mm;
+  width: 100%;
+}
+
+/* Languages inline — single horizontal row with separators */
+.cv-languages-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2mm 3mm;
+  font-size: 8.5pt;
+  color: #374151;
+}
+
+.cv-languages-inline .cv-language-inline-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.5mm;
+}
+
+.cv-languages-inline .cv-language-inline-item strong {
+  font-weight: 600;
+  color: var(--cv-primary);
+}
+
+.cv-languages-inline .cv-language-inline-level {
+  color: var(--cv-accent);
+  font-size: 7.5pt;
+}
+
+.cv-languages-inline .cv-inline-sep {
+  color: #cbd5e1;
+  margin-left: 2mm;
+}
+
+/* In the header layout, soft-skill pills use a light theme */
+.cv-layout-header .cv-soft-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm;
+}
+
+.cv-layout-header .cv-soft-skill-tag {
+  padding: 1mm 3mm;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 2mm;
+  font-size: 7.5pt;
+  color: #374151;
+}
+
+/* Certifications: auto-fit so 1 cert fills full width, 2+ share columns */
+.cv-layout-header .cv-certs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70mm, 1fr));
+  gap: 2mm;
+}
+
+.cv-layout-header .cv-certs-grid .cv-cert-card {
+  flex: none;
+  min-width: 0;
+  padding: 2mm 3mm;
+}
+
+/* Tighter timeline spacing in the wider layout */
+.cv-layout-header .cv-timeline {
+  gap: 2mm;
+}
+
+/* Compact section titles for the header layout — half the vertical footprint */
+.cv-layout-header .cv-styled-section-title {
+  margin-bottom: 1.5mm;
+  padding-bottom: 1mm;
+  border-bottom-width: 1px;
+}
+
+.cv-layout-header .cv-section-icon-wrapper {
+  width: 5mm;
+  height: 5mm;
+}
+
+.cv-layout-header .cv-section-icon {
+  width: 3mm;
+  height: 3mm;
+}
+
+.cv-layout-header .cv-styled-section-title h2 {
+  font-size: 9pt;
+}
+
+/* Tighter timeline cards */
+.cv-layout-header .cv-timeline-content {
+  padding: 2mm 2.5mm;
+}
+
+.cv-layout-header .cv-timeline-list li {
+  margin-bottom: 0.5mm;
+}
+
+/* Tighter summary */
+.cv-layout-header .cv-summary-text {
+  font-size: 8pt;
+  line-height: 1.45;
+}
+
+/* Projects: two-column grid in the wide layout */
+.cv-layout-header .cv-projects-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80mm, 1fr));
+  gap: 2mm;
+}
+
+.cv-layout-header .cv-project-card {
+  padding: 2mm 2.5mm;
+}
+
+.cv-layout-header .cv-timeline-content {
+  padding: 2mm 3mm;
+}
+
+.cv-layout-header .cv-timeline-list li {
+  margin-bottom: 0.5mm;
+  line-height: 1.35;
+}
+
+.cv-layout-header .cv-styled-section-title {
+  margin-bottom: 1.5mm;
+  padding-bottom: 0.8mm;
+}
+
+.cv-layout-header .cv-section-icon-wrapper {
+  width: 5mm;
+  height: 5mm;
+  border-radius: 1.2mm;
+}
+
+.cv-layout-header .cv-section-icon {
+  width: 3mm;
+  height: 3mm;
+}
+
+.cv-layout-header .cv-styled-section-title h2 {
+  font-size: 9.5pt;
+}
+
+/* Project cards: single column, fill width */
+.cv-layout-header .cv-projects-list {
+  gap: 2mm;
+}
+
+.cv-layout-header .cv-project-card {
+  padding: 2mm 3mm;
+}
+
+/* Summary text — slightly tighter */
+.cv-layout-header .cv-summary-text {
+  line-height: 1.45;
+}
+
+/* ============================================
    PRINT STYLES - CLEAN PDF OUTPUT
    ============================================ */
 

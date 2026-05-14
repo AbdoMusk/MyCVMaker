@@ -88,11 +88,14 @@ export interface ImageStyle {
   border: boolean;  // show white border around frame (when shape supports it)
 }
 
+export type CVLayout = 'sidebar' | 'header';
+
 export interface CVSettings {
   language: Language;
   theme: ThemeColors;
   customTitles: Partial<Record<SectionTitleKey, string>>;
   imageStyle: ImageStyle;
+  layout: CVLayout;
 }
 
 export interface CVData {
@@ -274,6 +277,7 @@ export const defaultSettings: CVSettings = {
     offsetY: 0,
     border: true,
   },
+  layout: 'sidebar',
 };
 
 export const defaultCVData: CVData = {

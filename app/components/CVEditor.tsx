@@ -30,6 +30,7 @@ import {
   SectionTitleKey,
   Language,
   ImageShape,
+  CVLayout,
 } from '../types/cv';
 
 // Helper function to generate unique IDs
@@ -261,6 +262,35 @@ const CollapsibleSection = ({
   );
 };
 
+// Tiny preview thumbnail showing the rough shape of each layout
+const LayoutThumbnail = ({ variant }: { variant: CVLayout }) => {
+  if (variant === 'sidebar') {
+    return (
+      <div className="h-14 rounded border border-gray-300 bg-white flex overflow-hidden">
+        <div className="w-1/3 bg-gradient-to-b from-slate-700 to-slate-600" />
+        <div className="flex-1 p-1 flex flex-col gap-0.5">
+          <div className="h-1.5 w-3/4 bg-slate-300 rounded-sm" />
+          <div className="h-1 w-1/2 bg-slate-200 rounded-sm" />
+          <div className="mt-1 h-0.5 w-full bg-slate-200" />
+          <div className="h-0.5 w-5/6 bg-slate-200" />
+          <div className="h-0.5 w-4/6 bg-slate-200" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="h-14 rounded border border-gray-300 bg-white flex flex-col overflow-hidden">
+      <div className="h-5 bg-gradient-to-r from-slate-700 to-slate-600" />
+      <div className="flex-1 p-1 flex flex-col gap-0.5">
+        <div className="h-1.5 w-3/4 bg-slate-300 rounded-sm" />
+        <div className="h-1 w-full bg-slate-200" />
+        <div className="h-1 w-5/6 bg-slate-200" />
+        <div className="h-1 w-4/5 bg-slate-200" />
+      </div>
+    </div>
+  );
+};
+
 // Settings Section — language, theme colors, and per-section title overrides
 const SettingsSection = () => {
   const { cvData, updateSettings, updateTheme, updateCustomTitle } = useCV();
@@ -294,6 +324,33 @@ const SettingsSection = () => {
 
   return (
     <CollapsibleSection title="Settings & Theme" defaultOpen={false}>
+      {/* Layout */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Layout Style</label>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { id: 'sidebar', label: 'Sidebar', hint: 'Photo + skills on the left' },
+            { id: 'header',  label: 'Header',  hint: 'Photo + skills across the top — wider main column' },
+          ] as { id: CVLayout; label: string; hint: string }[]).map((opt) => {
+            const active = settings.layout === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => updateSettings({ layout: opt.id })}
+                className={`flex flex-col items-stretch gap-1 p-2 rounded-md border-2 transition-all text-left ${
+                  active ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-400'
+                }`}
+              >
+                <LayoutThumbnail variant={opt.id} />
+                <span className="text-xs font-medium text-gray-800">{opt.label}</span>
+                <span className="text-[10px] text-gray-500 leading-tight">{opt.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Language */}
       <div className="mb-5">
         <label className="block text-sm font-medium text-gray-700 mb-2">Language / Langue</label>
